@@ -1,9 +1,8 @@
 #![allow(unused)]
 
-use std::rc::Weak;
-use std::{path::Path, rc::Rc};
+use std::path::Path;
 use std::collections::HashMap;
-use std::io::{Read, Seek, Cursor};
+use std::io::{Seek, Cursor};
 use ml::io::{File, ReadExt, LittleEndian};
 use anyhow::Result;
 
@@ -53,7 +52,7 @@ impl std::fmt::Debug for Value {
 }
 
 macro_rules! value_impl {
-    ($num_type:ident, $value_type:ident) => {
+    ($num_type:tt, $value_type:ident) => {
         impl From<$num_type> for Value {
             fn from(value: $num_type) -> Self {
                 Value::$value_type(value)
@@ -67,6 +66,22 @@ macro_rules! value_impl {
                     _ => panic!("type is {self:?}"),
                 }
             }
+        }
+    };
+}
+
+impl Value {
+    pub fn str(&self) -> &str {
+        match self {
+            Self::String(size, s) => s.as_ref().unwrap(),
+            _ => panic!("type is {self:?}"),
+        }
+    }
+
+    pub fn str_id(&self) -> u16 {
+        match self {
+            Self::StringId(id) => *id,
+            _ => panic!("type is {self:?}"),
         }
     }
 }
@@ -160,14 +175,9 @@ impl Field {
                 }
             },
             Value::U8Array(v) => {
-                // println!("capacity: {}", v.capacity());
-                // println!("len: {}", v.len());
                 for i in 0..v.capacity() {
-                    // println!("  {i}");
                     v[i] = fs.u8();
                 }
-                // println!("capacity: {}", v.capacity());
-                // println!("len: {}", v.len());
             },
             Value::U16Array(v) => {
                 for i in 0..v.capacity() {
@@ -179,7 +189,6 @@ impl Field {
                     v[i] = fs.u32::<LE>();
                 }
             },
-
             Value::StringId(_) => {
                 self.value = Value::StringId(fs.u16::<LE>());
             },
@@ -187,10 +196,10 @@ impl Field {
             Value::ItemCode(_) => {
                 self.value = Value::ItemCode(fs.u32::<LE>());
             },
-
             Value::String(size, s) => {
-                let mut b = fs.read_bytes(*size)?;
-                let s = String::from_utf8(b).unwrap().trim_end_matches(char::from(0)).to_string();
+                let b = fs.read_bytes(*size)?;
+                let b = &b[0..b.iter().position(|v| *v == 0).unwrap_or(b.len())];
+                let s = String::from_utf8(b.to_vec()).unwrap();
                 self.value = Value::String(*size, Some(s));
             },
         }
@@ -264,8 +273,7 @@ impl BinFile {
     }
 
     pub fn read(&mut self) -> Result<BinRecord> {
-        let mut buf = Vec::new();
-        self.file.read_to_end(&mut buf)?;
+        let buf = self.file.read_bytes(self.file.size().unwrap() as usize)?;
         let mut r = Cursor::new(&buf);
 
         let mut record = BinRecord::new();

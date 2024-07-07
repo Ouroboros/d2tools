@@ -42,6 +42,10 @@ impl DataTblsManager {
         Ok(())
     }
 
+    pub fn get_string_by_index(&self, index: u16) -> Option<&str> {
+        self.strtbl.get_string_by_index(index)
+    }
+
     pub fn dump_fields(&self, rec: &BinRecord, file_name: &str) -> Result<()> {
         let mut lines = Vec::<String>::new();
 
@@ -57,7 +61,7 @@ impl DataTblsManager {
                     continue;
                 }
 
-                lines.push(format!("        '{}': \"{}\",", f.name, self.format_value(&f.value)));
+                lines.push(format!("        '{}': {},", f.name, self.format_value(&f.value)));
             }
 
             lines.push("    },".to_string());
@@ -75,31 +79,31 @@ impl DataTblsManager {
 
     pub fn format_value(&self, value: &Value) -> String {
         match value {
-            Value::Int8(v) => format!("Int8: 0x{v:02X} ({v})"),
-            Value::Int16(v) => format!("Int16: 0x{v:04X} ({v})"),
-            Value::Int32(v) => format!("Int32: 0x{v:08X} ({v})"),
-            Value::UInt8(v) => format!("UInt8: 0x{v:02X} ({v})"),
-            Value::UInt16(v) => format!("UInt16: 0x{v:04X} ({v})"),
-            Value::UInt32(v) => format!("UInt32: 0x{v:08X} ({v})"),
-            Value::I8Array(v) => format!("Int8Array({}): {v:?}", v.len()),
-            Value::I16Array(v) => format!("Int16Array({}): {v:?}", v.len()),
-            Value::I32Array(v) => format!("Int32Array({}): {v:?}", v.len()),
-            Value::U8Array(v) => format!("UInt8Array({}): {v:?}", v.len()),
-            Value::U16Array(v) => format!("UInt16Array({}): {v:?}", v.len()),
-            Value::U32Array(v) => format!("UInt32Array({}): {v:?}", v.len()),
+            Value::Int8(v) => format!("\"Int8: 0x{v:02X} ({v})\""),
+            Value::Int16(v) => format!("\"Int16: 0x{v:04X} ({v})\""),
+            Value::Int32(v) => format!("\"Int32: 0x{v:08X} ({v})\""),
+            Value::UInt8(v) => format!("\"UInt8: 0x{v:02X} ({v})\""),
+            Value::UInt16(v) => format!("\"UInt16: 0x{v:04X} ({v})\""),
+            Value::UInt32(v) => format!("\"UInt32: 0x{v:08X} ({v})\""),
+            Value::I8Array(v) => format!("\"Int8Array({}): {v:?}\"", v.len()),
+            Value::I16Array(v) => format!("\"Int16Array({}): {v:?}\"", v.len()),
+            Value::I32Array(v) => format!("\"Int32Array({}): {v:?}\"", v.len()),
+            Value::U8Array(v) => format!("\"UInt8Array({}): {v:?}\"", v.len()),
+            Value::U16Array(v) => format!("\"UInt16Array({}): {v:?}\"", v.len()),
+            Value::U32Array(v) => format!("\"UInt32Array({}): {v:?}\"", v.len()),
 
             Value::StringId(v) => {
-                let s = self.strtbl.get_string_by_index(*v as usize);
-                if let Some(v) = s { v.to_string() } else { format!("StringId<0x{:04X}>", *v) }
+                let s = self.strtbl.get_string_by_index(*v);
+                if let Some(v) = s { format!("\"{}\"", v) } else { format!("\"StringId<0x{:04X}>\"", *v) }
             },
 
             Value::ItemCode(v) => {
                 let b = v.to_le_bytes();
-                String::from_utf8(b.to_vec()).unwrap().trim_end_matches(char::from(0)).to_string()
+                format!("\"{}\"", String::from_utf8(b.to_vec()).unwrap().trim_end_matches(char::from(0)))
             },
 
             Value::String(size, s) => {
-                s.as_ref().unwrap().clone()
+                format!("\"{}\"", s.as_ref().unwrap())
             },
         }
     }

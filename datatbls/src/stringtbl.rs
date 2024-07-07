@@ -154,7 +154,8 @@ impl StringTableManager {
         Ok(())
     }
 
-    pub fn get_string_by_index(&self, index: usize) -> Option<&str> {
+    pub fn get_string_by_index(&self, index: u16) -> Option<&str> {
+        let index = index as usize;
         match index {
             0..=9999 => {
                 Some(self.string[index].value.as_str())

@@ -4,10 +4,10 @@ use crate::field;
 
 lazy_static!{
     pub static ref ITEMS: Vec<Field> = vec![
-        field!("flippy_file",               str, 32,        0x00),
-        field!("inv_file",                  str, 32,        0x20),
-        field!("unique_inv_file",           str, 32,        0x40),
-        field!("set_inv_file",              str, 32,        0x60),
+        field!("flippy_file",               str[32],        0x00),
+        field!("inv_file",                  str[32],        0x20),
+        field!("unique_inv_file",           str[32],        0x40),
+        field!("set_inv_file",              str[32],        0x60),
         field!("code",                      ItemCode,       0x80),
         field!("norm_code",                 ItemCode,       0x84),
         field!("uber_code",                 ItemCode,       0x88),

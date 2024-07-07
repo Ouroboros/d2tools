@@ -2,6 +2,8 @@
 
 use std::{io::Write, collections::HashMap, fmt::format};
 
+use anyhow::Ok;
+
 use {
     crate::{
         bin::*,
@@ -25,26 +27,14 @@ fn test_string_table() -> Result<()> {
     Ok(())
 }
 
-pub fn run() -> Result<()> {
-    Field::validate_fields_offset(&*fields::SKILLS);
-    Field::validate_fields_offset(&*fields::SKILL_DESC);
-    Field::validate_fields_offset(&*fields::ITEMS);
-
-    let mut tbls = DataTblsManager::new();
-
-    tbls.load(r"D:\Game\Diablo II 暗月\MPQDumped\DATA\")?;
-
-    tbls.dump_fields(tbls.weapon.records(), r"E:\Desktop\bin2txt\test\bin\weapon.py");
-    tbls.dump_fields(tbls.armor.records(), r"E:\Desktop\bin2txt\test\bin\armor.py");
-    tbls.dump_fields(tbls.misc.records(), r"E:\Desktop\bin2txt\test\bin\misc.py");
-
+fn dump_item_id(tbls: &DataTblsManager) -> Result<()> {
     let mut item_id_lines = Vec::new();
 
     for items in vec![&tbls.weapon, &tbls.armor, &tbls.misc] {
         let start_index = items.start_index() as usize;
 
         for (index, item) in items.records().iter().enumerate() {
-            let name = tbls.format_value(&item.get("name_str").value);
+            let name = tbls.get_string_by_index(item.get("name_str").value.str_id()).unwrap();
             let name = name.trim_end();
 
             if name.is_empty() {
@@ -57,28 +47,39 @@ pub fn run() -> Result<()> {
 
     std::fs::File::create(r"D:\Dev\Source\d2tools\DarkMoonData\物品ID.txt")?.write_all(item_id_lines.join("\n").as_bytes())?;
 
+    Ok(())
+}
+
+pub fn run() -> Result<()> {
+    Field::validate_fields_offset(&*fields::SKILLS);
+    Field::validate_fields_offset(&*fields::SKILL_DESC);
+    Field::validate_fields_offset(&*fields::ITEMS);
+
+    let mut tbls = DataTblsManager::new();
+
+    tbls.load(r"D:\Game\Diablo II 暗月\MPQDumped\DATA\")?;
+
+    println!("`{}`", tbls.get_string_by_index(0x1413).unwrap());
     return Ok(());
+
+    dump_item_id(&tbls)?;
+
+    tbls.dump_fields(tbls.weapon.records(), r"E:\Desktop\bin2txt\test\bin\weapon.py");
+    tbls.dump_fields(tbls.armor.records(), r"E:\Desktop\bin2txt\test\bin\armor.py");
+    tbls.dump_fields(tbls.misc.records(), r"E:\Desktop\bin2txt\test\bin\misc.py");
+
+    // return Ok(());
 
     // panic!("{:#?}", fields::SKILL_DESC[fields::SKILL_DESC.len() - 1].value);
 
-    let mut bin_skills = BinFile::open(r"E:\Desktop\bin2txt\test\bin\skills.bin", &*fields::SKILLS)?;
+    let mut bin_skills = BinFile::open(r"D:\Game\Diablo II 暗月\MPQDumped\DATA\Global\EXCEL\skills.bin", &*fields::SKILLS)?;
     let skills = bin_skills.read()?;
 
-    let mut bin_skill_desc = BinFile::open(r"E:\Desktop\bin2txt\test\bin\skilldesc.bin", &*fields::SKILL_DESC)?;
+    let mut bin_skill_desc = BinFile::open(r"D:\Game\Diablo II 暗月\MPQDumped\DATA\Global\EXCEL\skilldesc.bin", &*fields::SKILL_DESC)?;
     let skill_desc = bin_skill_desc.read()?;
 
     tbls.dump_fields(&skills, r"E:\Desktop\bin2txt\test\bin\skills.py").unwrap();
     tbls.dump_fields(&skill_desc, r"E:\Desktop\bin2txt\test\bin\skill_desc.py").unwrap();
-
-    let mut strtbl = StringTableManager::new();
-
-    strtbl.load(
-        r"D:\Game\Diablo II 暗月\MPQDumped\DATA\LOCAL\lng\CHI\string.tbl",
-        r"D:\Game\Diablo II 暗月\MPQDumped\DATA\LOCAL\lng\CHI\patchstring.tbl",
-        r"D:\Game\Diablo II 暗月\MPQDumped\DATA\LOCAL\lng\CHI\expansionstring.tbl",
-        r"D:\Game\Diablo II 暗月\MPQDumped\DATA\duck\lng\chi\DuckModString.tbl",
-        r"D:\Game\Diablo II 暗月\MPQDumped\DATA\duck\lng\chi\DuckPermString.tbl",
-    )?;
 
     let mut m: HashMap<i8, Vec<(&Record, &Record)>> = HashMap::new();
 
@@ -91,8 +92,8 @@ pub fn run() -> Result<()> {
 
         let char_class = skill.get("char_class").value.i8();
         let desc = &skill_desc.records()[desc as usize];
-        let str_name = desc.get("str_name").value.u16() as usize;
-        let skill_name = strtbl.get_string_by_index(str_name);
+        let str_name = desc.get("str_name").value.u16();
+        let skill_name = tbls.get_string_by_index(str_name);
 
         if skill_name.is_none() {
             continue;
@@ -127,8 +128,8 @@ pub fn run() -> Result<()> {
             let max_lvl     = skill.get("max_lvl").value.u16();
             let skill_id    = skill.get("skill_id").value.i16();
 
-            let name        = strtbl.get_string_by_index(name as usize);
-            let str_long    = strtbl.get_string_by_index(str_long as usize);
+            let name        = tbls.get_string_by_index(name);
+            let str_long    = tbls.get_string_by_index(str_long);
 
             if name.is_none() || str_long.is_none() {
                 continue;
