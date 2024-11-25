@@ -31,8 +31,25 @@ impl DataTblsManager {
             data_path.join(r"LOCAL\lng\CHI\string.tbl"),
             data_path.join(r"LOCAL\lng\CHI\patchstring.tbl"),
             data_path.join(r"LOCAL\lng\CHI\expansionstring.tbl"),
-            data_path.join(r"duck\lng\chi\DuckModString.tbl"),
-            data_path.join(r"duck\lng\chi\DuckPermString.tbl"),
+            None,
+            None,
+        )?;
+
+        self.weapon.load(data_path.join(r"global\excel\weapons.bin"))?;
+        self.armor.load(data_path.join(r"global\excel\armor.bin"))?;
+        self.misc.load(data_path.join(r"global\excel\misc.bin"))?;
+
+        Ok(())
+    }
+
+    pub fn load_darkmoon<T: AsRef<std::ffi::OsStr>>(&mut self, data_path: T) -> Result<()> {
+        let data_path = Path::new(&data_path);
+        self.strtbl.load(
+            data_path.join(r"LOCAL\lng\CHI\string.tbl"),
+            data_path.join(r"LOCAL\lng\CHI\patchstring.tbl"),
+            data_path.join(r"LOCAL\lng\CHI\expansionstring.tbl"),
+            Some(data_path.join(r"duck\lng\chi\DuckModString.tbl")),
+            Some(data_path.join(r"duck\lng\chi\DuckPermString.tbl")),
         )?;
 
         self.weapon.load(data_path.join(r"global\excel\weapons.bin"))?;

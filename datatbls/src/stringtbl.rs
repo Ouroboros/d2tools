@@ -145,12 +145,20 @@ impl StringTableManager {
         }
     }
 
-    pub fn load<T: AsRef<Path>>(&mut self, string: T, patchstring: T, expansionstring: T, duckmodstring: T, duckpermstring: T) -> Result<()> {
+    pub fn load<T: AsRef<Path>>(&mut self, string: T, patchstring: T, expansionstring: T, duckmodstring: Option<T>, duckpermstring: Option<T>) -> Result<()> {
         self.string = StringTable::open(string)?.read()?;
         self.patchstring = StringTable::open(patchstring)?.read()?;
         self.expansionstring = StringTable::open(expansionstring)?.read()?;
-        self.duckmodstring = StringTable::open(duckmodstring)?.read()?;
-        self.duckpermstring = StringTable::open(duckpermstring)?.read()?;
+
+        match duckmodstring {
+            Some(ref x) => self.duckmodstring = StringTable::open(x)?.read()?,
+            None => (),
+        };
+
+        match duckmodstring {
+            Some(ref x) => self.duckpermstring = StringTable::open(x)?.read()?,
+            None => (),
+        };
         Ok(())
     }
 
@@ -161,7 +169,8 @@ impl StringTableManager {
                 Some(self.string[index].value.as_str())
             },
             10000..=19999 => {
-                Some(self.patchstring[index - 10000].value.as_str())
+                self.get_string_from_tbl(&self.patchstring, index - 10000)
+                // Some(self.patchstring[index - 10000].value.as_str())
             },
             20000..=29999 => {
                 Some(self.expansionstring[index - 20000].value.as_str())
@@ -177,5 +186,16 @@ impl StringTableManager {
                 // todo!("unsupported index: {index}");
             },
         }
+    }
+
+    fn get_string_from_tbl<'a>(&self, str_tbl: &'a Vec<StringTableEntry>, index: usize) -> Option<&'a str> {
+        let mut index = index;
+
+        if index >= str_tbl.len() {
+            index = 500;
+            // return None;
+        }
+
+        Some(str_tbl[index].value.as_str())
     }
 }

@@ -15,8 +15,14 @@ use {
     anyhow::Result,
 };
 
+const GAME_PATH: &str = r"D:\Game\median-xl\MPQDumped\";
+
+fn game_file(f: &str) -> String {
+    [GAME_PATH, f].concat()
+}
+
 fn test_string_table() -> Result<()> {
-    let mut patchstring = StringTable::open(r"D:\Game\Diablo II 暗月\MPQDumped\DATA\LOCAL\lng\CHI\expansionstring.tbl")?;
+    let mut patchstring = StringTable::open(&game_file(r"DATA\LOCAL\lng\CHI\expansionstring.tbl"))?;
 
     let kvs = patchstring.read()?;
 
@@ -30,22 +36,27 @@ fn test_string_table() -> Result<()> {
 fn dump_item_id(tbls: &DataTblsManager) -> Result<()> {
     let mut item_id_lines = Vec::new();
 
+    let mut classid = -1;
+
     for items in vec![&tbls.weapon, &tbls.armor, &tbls.misc] {
         let start_index = items.start_index() as usize;
 
         for (index, item) in items.records().iter().enumerate() {
+            classid += 1;
+
             let name = tbls.get_string_by_index(item.get("name_str").value.str_id()).unwrap();
             let name = name.trim_end();
 
             if name.is_empty() {
+                panic!("wtf");
                 continue;
             }
 
-            item_id_lines.push(format!("{:>4} {}", index + start_index, name));
+            item_id_lines.push(format!("{:>4} {}", classid, name));
         }
     }
 
-    std::fs::File::create(r"D:\Dev\Source\d2tools\DarkMoonData\物品ID.txt")?.write_all(item_id_lines.join("\n").as_bytes())?;
+    std::fs::File::create(&game_file(r"data\物品ID.txt"))?.write_all(item_id_lines.join("\n").as_bytes())?;
 
     Ok(())
 }
@@ -57,29 +68,31 @@ pub fn run() -> Result<()> {
 
     let mut tbls = DataTblsManager::new();
 
-    tbls.load(r"D:\Game\Diablo II 暗月\MPQDumped\DATA\")?;
+    // tbls.load(r"D:\Game\Diablo II 暗月\MPQDumped\DATA\")?;
+    tbls.load(&game_file(r"data"))?;
 
-    println!("`{}`", tbls.get_string_by_index(0x1413).unwrap());
-    return Ok(());
+    for id in vec![26011] {
+        println!("`{}`", tbls.get_string_by_index(id).unwrap());
+    }
+    // dump_item_id(&tbls)?;
+    // return Ok(());
 
-    dump_item_id(&tbls)?;
-
-    tbls.dump_fields(tbls.weapon.records(), r"E:\Desktop\bin2txt\test\bin\weapon.py");
-    tbls.dump_fields(tbls.armor.records(), r"E:\Desktop\bin2txt\test\bin\armor.py");
-    tbls.dump_fields(tbls.misc.records(), r"E:\Desktop\bin2txt\test\bin\misc.py");
+    tbls.dump_fields(tbls.weapon.records(), &game_file(r"data\weapon.py"));
+    tbls.dump_fields(tbls.armor.records(), &game_file(r"data\armor.py"));
+    tbls.dump_fields(tbls.misc.records(), &game_file(r"data\misc.py"));
 
     // return Ok(());
 
     // panic!("{:#?}", fields::SKILL_DESC[fields::SKILL_DESC.len() - 1].value);
 
-    let mut bin_skills = BinFile::open(r"D:\Game\Diablo II 暗月\MPQDumped\DATA\Global\EXCEL\skills.bin", &*fields::SKILLS)?;
+    let mut bin_skills = BinFile::open(&game_file(r"DATA\Global\EXCEL\skills.bin"), &*fields::SKILLS)?;
     let skills = bin_skills.read()?;
 
-    let mut bin_skill_desc = BinFile::open(r"D:\Game\Diablo II 暗月\MPQDumped\DATA\Global\EXCEL\skilldesc.bin", &*fields::SKILL_DESC)?;
+    let mut bin_skill_desc = BinFile::open(&game_file(r"DATA\Global\EXCEL\skilldesc.bin"), &*fields::SKILL_DESC)?;
     let skill_desc = bin_skill_desc.read()?;
 
-    tbls.dump_fields(&skills, r"E:\Desktop\bin2txt\test\bin\skills.py").unwrap();
-    tbls.dump_fields(&skill_desc, r"E:\Desktop\bin2txt\test\bin\skill_desc.py").unwrap();
+    tbls.dump_fields(&skills, &game_file(r"data\skills.py")).unwrap();
+    tbls.dump_fields(&skill_desc, &game_file(r"data\skill_desc.py")).unwrap();
 
     let mut m: HashMap<i8, Vec<(&Record, &Record)>> = HashMap::new();
 
@@ -93,6 +106,9 @@ pub fn run() -> Result<()> {
         let char_class = skill.get("char_class").value.i8();
         let desc = &skill_desc.records()[desc as usize];
         let str_name = desc.get("str_name").value.u16();
+
+        // println!("str_name: {str_name}");
+
         let skill_name = tbls.get_string_by_index(str_name);
 
         if skill_name.is_none() {
@@ -135,6 +151,10 @@ pub fn run() -> Result<()> {
                 continue;
             }
 
+            if name.unwrap() == "ÿc2致命毒龙卷" {
+                println!("idx: {}", desc.get("str_name").value.u16());
+            }
+
             let ls = vec![
                 "    {".to_string(),
                 format!("      \"name\": \"{}\",", name.unwrap()),
@@ -156,7 +176,7 @@ pub fn run() -> Result<()> {
 
     let output = lines.join("\n");
 
-    let mut py = std::fs::File::create(r"E:\Desktop\bin2txt\test\bin\skills2.py")?;
+    let mut py = std::fs::File::create(&game_file(r"data\skills2.py"))?;
     py.write_all(output.as_bytes())?;
 
     // println!("{:#?}", m);
